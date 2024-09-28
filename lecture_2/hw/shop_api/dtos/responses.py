@@ -9,6 +9,14 @@ class ItemResponse:
 
 
 @dataclass(slots=True)
+class GetItemsResponseItem:
+    id: int
+    name: str
+    price: float
+    available: bool
+
+
+@dataclass(slots=True)
 class ModifyItemResponse:
     id: int
     name: str | None
@@ -37,4 +45,4 @@ class GetCartResponse:
 
 @dataclass(slots=True)
 class ErrorReason:
-    field: str
+    loc: str

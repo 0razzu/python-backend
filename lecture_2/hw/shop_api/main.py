@@ -1,11 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from typing import Annotated
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from starlette import status
 from starlette.responses import Response
 
 from lecture_2.hw.shop_api.dtos.requests import CreateItemRequest, ModifyItemRequest
 from lecture_2.hw.shop_api.dtos.responses import ItemResponse, ModifyItemResponse, CreateCartResponse, GetCartResponse, \
-    GetCartResponseItem, ErrorReason
+    GetCartResponseItem, ErrorReason, GetItemsResponseItem
 from lecture_2.hw.shop_api.models import Item, PatchItemInfo, Cart
 from lecture_2.hw.shop_api.store import repository
 from lecture_2.hw.shop_api.store.errors import RepositoryException
@@ -44,6 +46,33 @@ async def get_item_by_id(id: int) -> ItemResponse:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=jsonable_encoder(ErrorReason('id')))
 
     return ItemResponse(item.id, item.name, item.price)
+
+
+@app.get(
+    path='/item',
+    status_code=status.HTTP_200_OK,
+)
+async def get_items(
+        offset: Annotated[int, Query(ge=0)] = 0,
+        limit: Annotated[int, Query(gt=0)] = 10,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        show_deleted: bool = False,
+) -> list[GetItemsResponseItem]:
+    items = repository.get_items(
+        offset,
+        limit,
+        min_price,
+        max_price,
+        show_deleted,
+    )
+
+    return [GetItemsResponseItem(
+        item.id,
+        item.name,
+        item.price,
+        not item.deleted,
+    ) for item in items]
 
 
 @app.put(

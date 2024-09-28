@@ -41,6 +41,25 @@ def check_item_by_id(id: int) -> bool:
     return db_item is not None and not db_item.deleted
 
 
+def get_items(
+        offset: int = 0,
+        limit: int = 10,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        show_deleted: bool = False,
+) -> list[Item]:
+    db_items = sorted(items.items(), key=lambda entry: entry[0])
+    if min_price:
+        db_items = filter(lambda entry: entry[1].price >= min_price, db_items)
+    if max_price:
+        db_items = filter(lambda entry: entry[1].price <= max_price, db_items)
+    if not show_deleted:
+        db_items = filter(lambda entry: not entry[1].deleted, db_items)
+    db_items = list(db_items)[offset: offset + limit]
+
+    return [Item(id, db_item.name, db_item.price, db_item.deleted) for id, db_item in db_items]
+
+
 def modify_item_by_id(id: int, item: Item) -> None:
     db_item = _get_item_by_id(id)
 
