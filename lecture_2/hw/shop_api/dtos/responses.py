@@ -13,3 +13,28 @@ class ModifyItemResponse:
     id: int
     name: str | None
     price: float | None
+
+
+@dataclass(slots=True)
+class CreateCartResponse:
+    id: int
+
+
+@dataclass(slots=True)
+class GetCartResponseItem:
+    id: int
+    name: str
+    quantity: int
+    available: bool
+
+
+@dataclass(slots=True)
+class GetCartResponse:
+    id: int
+    items: list[GetCartResponseItem]
+    price: float
+
+
+@dataclass(slots=True)
+class ErrorReason:
+    field: str

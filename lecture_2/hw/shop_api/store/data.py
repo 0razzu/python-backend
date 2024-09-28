@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Iterable
+from dataclasses import dataclass, field
+from typing import Iterable, Annotated
 
 
 def _int_id_generator() -> Iterable[int]:
@@ -9,7 +9,11 @@ def _int_id_generator() -> Iterable[int]:
         i += 1
 
 
-id_generator = _int_id_generator()
+_id_generator = _int_id_generator()
+
+
+def generate_id() -> int:
+    return next(_id_generator)
 
 
 @dataclass(slots=True)
@@ -21,8 +25,8 @@ class DBItem:
 
 @dataclass(slots=True)
 class DBCart:
-    items: list[int]
+    items: dict[Annotated[int, 'Item ID'], Annotated[int, 'Quantity']] = field(default_factory=dict)
 
 
-items = {}
-carts = {}
+items: dict[Annotated[int, 'ID'], DBItem] = {}
+carts: dict[Annotated[int, 'ID'], DBCart] = {}

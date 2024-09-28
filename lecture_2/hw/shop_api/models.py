@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Annotated
 
 
 @dataclass(slots=True)
@@ -7,6 +8,12 @@ class Item:
     name: str
     price: float
     deleted: bool
+
+    def __repr__(self):
+        return f'{self.id}, {self.name}'
+
+    def __hash__(self):
+        return hash(repr(self))
 
 
 @dataclass(slots=True)
@@ -20,5 +27,11 @@ class PatchItemInfo:
 
 @dataclass(slots=True)
 class Cart:
-    id: int | None
-    items: dict[Item, int]
+    id: int | None = None
+    items: dict[Item, Annotated[int, 'Quantity']] = field(default_factory=dict)
+
+    def __repr__(self):
+        return f'{self.id}'
+
+    def __hash__(self):
+        return hash(repr(self))

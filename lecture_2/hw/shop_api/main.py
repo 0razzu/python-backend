@@ -1,11 +1,14 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.encoders import jsonable_encoder
 from starlette import status
 from starlette.responses import Response
 
 from lecture_2.hw.shop_api.dtos.requests import CreateItemRequest, ModifyItemRequest
-from lecture_2.hw.shop_api.dtos.responses import ItemResponse, ModifyItemResponse
-from lecture_2.hw.shop_api.models import Item, PatchItemInfo
+from lecture_2.hw.shop_api.dtos.responses import ItemResponse, ModifyItemResponse, CreateCartResponse, GetCartResponse, \
+    GetCartResponseItem, ErrorReason
+from lecture_2.hw.shop_api.models import Item, PatchItemInfo, Cart
 from lecture_2.hw.shop_api.store import repository
+from lecture_2.hw.shop_api.store.errors import RepositoryException
 
 app = FastAPI(title="Shop API")
 
@@ -18,7 +21,7 @@ async def create_item(request: CreateItemRequest, response: Response) -> ItemRes
     item = Item(None, request.name, request.price, False)
     repository.insert_item(item)
 
-    response.headers['location'] = fpath='/item/{item.id}'
+    response.headers['location'] = f'/item/{item.id}'
 
     return ItemResponse(item.id, item.name, item.price)
 
@@ -35,17 +38,17 @@ async def create_item(request: CreateItemRequest, response: Response) -> ItemRes
     },
 )
 async def get_item_by_id(id: int) -> ItemResponse:
-    item = repository.get_item_by_id(id)
-
-    if item is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    try:
+        item = repository.get_item_by_id(id)
+    except RepositoryException:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=jsonable_encoder(ErrorReason('id')))
 
     return ItemResponse(item.id, item.name, item.price)
 
 
 @app.put(
     path='/item/{id}',
-responses={
+    responses={
         status.HTTP_200_OK: {
             "description": "Successfully replaced",
         },
@@ -57,8 +60,10 @@ responses={
 async def replace_item(request: CreateItemRequest, id: int) -> ItemResponse:
     item = Item(None, request.name, request.price, False)
 
-    if not repository.modify_item_by_id(id, item):
-        raise HTTPException(status_code=status.HTTP_304_NOT_MODIFIED)
+    try:
+        repository.modify_item_by_id(id, item)
+    except RepositoryException:
+        raise HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail=jsonable_encoder(ErrorReason('id')))
 
     return ItemResponse(item.id, item.name, item.price)
 
@@ -66,7 +71,7 @@ async def replace_item(request: CreateItemRequest, id: int) -> ItemResponse:
 @app.patch(
     path='/item/{id}',
     responses={
-status.HTTP_200_OK: {
+        status.HTTP_200_OK: {
             "description": "Successfully modified",
         },
         status.HTTP_304_NOT_MODIFIED: {
@@ -77,10 +82,10 @@ status.HTTP_200_OK: {
 async def modify_item(request: ModifyItemRequest, id: int) -> ModifyItemResponse:
     patch_info = PatchItemInfo(request.name, request.price)
 
-    patch_result = repository.patch_item_by_id(id, patch_info)
-
-    if patch_result is None:
-        raise HTTPException(status_code=status.HTTP_304_NOT_MODIFIED)
+    try:
+        patch_result = repository.patch_item_by_id(id, patch_info)
+    except RepositoryException:
+        raise HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail=jsonable_encoder(ErrorReason('id')))
 
     return ModifyItemResponse(id, patch_result.name, patch_result.price)
 
@@ -99,6 +104,59 @@ async def delete_item(id: int) -> Response:
     path='/cart',
     status_code=status.HTTP_201_CREATED,
 )
-async def create_cart(response: Response):
-    response.headers['location'] = path='/cart/1'
-    return {'id': 1}
+async def create_cart(response: Response) -> CreateCartResponse:
+    cart = Cart()
+
+    repository.insert_cart(cart)
+
+    response.headers['location'] = f'/cart/{cart.id}'
+
+    return CreateCartResponse(cart.id)
+
+
+@app.get(
+    path='/cart/{id}',
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Successfully returned the requested cart",
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Failed to return the requested cart as one was not found",
+        },
+    },
+)
+async def get_cart_by_id(id: int) -> GetCartResponse:
+    try:
+        cart = repository.get_cart_by_id(id)
+    except RepositoryException:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=jsonable_encoder(ErrorReason('id')))
+
+    return GetCartResponse(
+        cart.id,
+        [
+            GetCartResponseItem(item.id, item.name, quan, not item.deleted)
+            for item, quan in cart.items.items()
+        ],
+        sum(item.price * (0 if item.deleted else quan) for item, quan in cart.items.items()),
+    )
+
+
+@app.post(
+    path='/cart/{cart_id}/add/{item_id}',
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Successfully inserted",
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Failed to insert as either the cart or the item was not found "
+                           "(specified in the «details.field» field of the response body)",
+        },
+    },
+)
+async def add_item_to_cart(cart_id: int, item_id: int) -> Response:
+    try:
+        repository.add_item_to_cart(item_id, cart_id)
+    except RepositoryException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=jsonable_encoder(ErrorReason(e.field)))
+
+    return Response()

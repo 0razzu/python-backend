@@ -1,9 +1,10 @@
-from lecture_2.hw.shop_api.models import Item, PatchItemInfo
-from lecture_2.hw.shop_api.store.data import id_generator, items, DBItem
+from lecture_2.hw.shop_api.models import Item, PatchItemInfo, Cart
+from lecture_2.hw.shop_api.store.data import generate_id, items, DBItem, carts, DBCart
+from lecture_2.hw.shop_api.store.errors import RepositoryException, RepositoryErrorCode
 
 
 def insert_item(item: Item) -> int:
-    id = next(id_generator)
+    id = generate_id()
 
     item.deleted = False
     item.id = id
@@ -13,47 +14,44 @@ def insert_item(item: Item) -> int:
     return id
 
 
-def _get_item_by_id(id: int) -> DBItem | None:
+def _get_item_by_id(id: int) -> DBItem:
     db_item = items.get(id)
 
     if db_item is None or db_item.deleted:
-        return None
+        raise RepositoryException(RepositoryErrorCode.NOT_FOUND, 'id')
 
     return db_item
 
 
-def get_item_by_id(id: int) -> Item | None:
+def get_item_by_id(id: int) -> Item:
     db_item = _get_item_by_id(id)
 
-    if db_item is None:
-        return None
+    return Item(id, db_item.name, db_item.price, db_item.deleted)
+
+
+def get_item_by_id_with_deleted(id: int) -> Item:
+    db_item = items[id]
 
     return Item(id, db_item.name, db_item.price, db_item.deleted)
 
 
 def check_item_by_id(id: int) -> bool:
-    return items.get(id) is not None
+    db_item = items.get(id)
+
+    return db_item is not None and not db_item.deleted
 
 
-def modify_item_by_id(id: int, item: Item) -> bool:
+def modify_item_by_id(id: int, item: Item) -> None:
     db_item = _get_item_by_id(id)
-
-    if db_item is None:
-        return False
 
     item.deleted = False
     item.id = id
 
     items[id] = DBItem(item.name, item.price, item.deleted)
 
-    return True
 
-
-def patch_item_by_id(id: int, patch_info: PatchItemInfo) -> PatchItemInfo | None:
+def patch_item_by_id(id: int, patch_info: PatchItemInfo) -> PatchItemInfo:
     db_item = _get_item_by_id(id)
-
-    if db_item is None:
-        return None
 
     patch_result = PatchItemInfo()
     if patch_info.name != db_item.name:
@@ -68,11 +66,46 @@ def patch_item_by_id(id: int, patch_info: PatchItemInfo) -> PatchItemInfo | None
 
 
 def delete_item_by_id(id: int) -> bool:
-    db_item = _get_item_by_id(id)
-
-    if db_item is None:
+    try:
+        db_item = _get_item_by_id(id)
+        items[id].deleted = True
+    except RepositoryException:
         return False
 
-    items[id].deleted = True
-
     return True
+
+
+def insert_cart(cart: Cart) -> int:
+    id = generate_id()
+
+    cart.id = id
+    carts[id] = DBCart()
+
+    return id
+
+
+def get_cart_by_id(id: int) -> Cart:
+    db_cart = carts.get(id)
+
+    if db_cart is None:
+        raise RepositoryException(RepositoryErrorCode.NOT_FOUND, 'id')
+
+    cart = Cart(id)
+    cart.items = {
+        get_item_by_id_with_deleted(item_id): item_quan
+        for item_id, item_quan in db_cart.items.items()
+    }
+
+    return cart
+
+
+def add_item_to_cart(item_id: int, cart_id: int):
+    db_cart = carts.get(cart_id)
+
+    if db_cart is None:
+        raise RepositoryException(RepositoryErrorCode.NOT_FOUND, 'cart_id')
+
+    if not check_item_by_id(item_id):
+        raise RepositoryException(RepositoryErrorCode.NOT_FOUND, 'item_id')
+
+    db_cart.items[item_id] = db_cart.items.get(item_id, 0) + 1

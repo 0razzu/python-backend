@@ -12,7 +12,7 @@ client = TestClient(app)
 faker = Faker()
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def existing_empty_cart_id() -> int:
     return client.post("/cart").json()["id"]
 
@@ -45,14 +45,13 @@ def existing_not_empty_carts(existing_items: list[int]) -> list[int]:
 
 
 @pytest.fixture(scope="session")
-def existing_not_empty_cart_id(
-    existing_empty_cart_id: int,
-    existing_items: list[int],
-) -> int:
-    for item_id in faker.random_elements(existing_items, unique=False, length=3):
-        client.post(f"/cart/{existing_empty_cart_id}/add/{item_id}")
+def existing_not_empty_cart_id(existing_items: list[int]) -> int:
+    not_empty_cart_id = client.post("/cart").json()["id"]
 
-    return existing_empty_cart_id
+    for item_id in faker.random_elements(existing_items, unique=False, length=3):
+        client.post(f"/cart/{not_empty_cart_id}/add/{item_id}")
+
+    return not_empty_cart_id
 
 
 @pytest.fixture()
@@ -75,7 +74,6 @@ def deleted_item(existing_item: dict[str, Any]) -> dict[str, Any]:
     return existing_item
 
 
-@pytest.mark.xfail()
 def test_post_cart() -> None:
     response = client.post("/cart")
 
@@ -84,7 +82,6 @@ def test_post_cart() -> None:
     assert "id" in response.json()
 
 
-@pytest.mark.xfail()
 @pytest.mark.parametrize(
     ("cart", "not_empty"),
     [
@@ -106,7 +103,7 @@ def test_get_cart(request, cart: int, not_empty: bool) -> None:
     if not_empty:
         price = 0
 
-        for item in response_json["item"]:
+        for item in response_json["items"]:
             item_id = item["id"]
             price += client.get(f"/item/{item_id}").json()["price"] * item["quantity"]
 
