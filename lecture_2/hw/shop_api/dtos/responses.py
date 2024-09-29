@@ -32,6 +32,7 @@ class CreateCartResponse:
 class GetCartResponseItem:
     id: int
     name: str
+    price: float
     quantity: int
     available: bool
 
@@ -41,6 +42,14 @@ class GetCartResponse:
     id: int
     items: list[GetCartResponseItem]
     price: float
+
+
+@dataclass(slots=True)
+class GetCartsResponseCart:
+    id: int
+    items: list[GetCartResponseItem]
+    price: float
+    quantity: int
 
 
 @dataclass(slots=True)

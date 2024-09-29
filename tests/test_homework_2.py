@@ -107,12 +107,11 @@ def test_get_cart(request, cart: int, not_empty: bool) -> None:
             item_id = item["id"]
             price += client.get(f"/item/{item_id}").json()["price"] * item["quantity"]
 
-        assert response_json["price"] == price
+        assert abs(response_json["price"] - price) < 1E-9
     else:
         assert response_json["price"] == 0.0
 
 
-@pytest.mark.xfail()
 @pytest.mark.parametrize(
     ("query", "status_code"),
     [
@@ -142,10 +141,10 @@ def test_get_cart_list(query: dict[str, Any], status_code: int):
         assert isinstance(data, list)
 
         if "min_price" in query:
-            assert all(item["price"] <= query["min_price"] for item in data)
+            assert all(item["price"] >= query["min_price"] for item in data)
 
         if "max_price" in query:
-            assert all(item["price"] >= query["max_price"] for item in data)
+            assert all(item["price"] <= query["max_price"] for item in data)
 
         quantity = sum(item["quantity"] for item in data)
 

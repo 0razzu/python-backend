@@ -7,7 +7,7 @@ from starlette.responses import Response
 
 from lecture_2.hw.shop_api.dtos.requests import CreateItemRequest, ModifyItemRequest
 from lecture_2.hw.shop_api.dtos.responses import ItemResponse, ModifyItemResponse, CreateCartResponse, GetCartResponse, \
-    GetCartResponseItem, ErrorReason, GetItemsResponseItem
+    GetCartResponseItem, ErrorReason, GetItemsResponseItem, GetCartsResponseCart
 from lecture_2.hw.shop_api.models import Item, PatchItemInfo, Cart
 from lecture_2.hw.shop_api.store import repository
 from lecture_2.hw.shop_api.store.errors import RepositoryException
@@ -55,8 +55,8 @@ async def get_item_by_id(id: int) -> ItemResponse:
 async def get_items(
         offset: Annotated[int, Query(ge=0)] = 0,
         limit: Annotated[int, Query(gt=0)] = 10,
-        min_price: float | None = None,
-        max_price: float | None = None,
+        min_price: Annotated[float, Query(ge=0)] | None = None,
+        max_price: Annotated[float, Query(ge=0)] | None = None,
         show_deleted: bool = False,
 ) -> list[GetItemsResponseItem]:
     items = repository.get_items(
@@ -163,11 +163,43 @@ async def get_cart_by_id(id: int) -> GetCartResponse:
     return GetCartResponse(
         cart.id,
         [
-            GetCartResponseItem(item.id, item.name, quan, not item.deleted)
+            GetCartResponseItem(item.id, item.name, item.price, quan, not item.deleted)
             for item, quan in cart.items.items()
         ],
         sum(item.price * (0 if item.deleted else quan) for item, quan in cart.items.items()),
     )
+
+
+@app.get(
+    path='/cart',
+    status_code=status.HTTP_200_OK,
+)
+async def get_carts(
+        offset: Annotated[int, Query(ge=0)] = 0,
+        limit: Annotated[int, Query(gt=0)] = 10,
+        min_price: Annotated[float, Query(ge=0)] | None = None,
+        max_price: Annotated[float, Query(ge=0)] | None = None,
+        min_quantity: Annotated[int, Query(ge=0)] | None = None,
+        max_quantity: Annotated[int, Query(ge=0)] | None = None,
+) -> list[GetCartsResponseCart]:
+    carts = repository.get_cart_views(
+        offset,
+        limit,
+        min_price,
+        max_price,
+        min_quantity,
+        max_quantity,
+    )
+
+    return [GetCartsResponseCart(
+        cart.id,
+        [
+            GetCartResponseItem(item.id, item.name, item.price, quan, not item.deleted)
+            for item, quan in cart.items.items()
+        ],
+        cart.price,
+        cart.quantity,
+    ) for cart in carts]
 
 
 @app.post(

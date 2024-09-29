@@ -1,6 +1,7 @@
 from lecture_2.hw.shop_api.models import Item, PatchItemInfo, Cart
 from lecture_2.hw.shop_api.store.data import generate_id, items, DBItem, carts, DBCart
 from lecture_2.hw.shop_api.store.errors import RepositoryException, RepositoryErrorCode
+from lecture_2.hw.shop_api.views import CartView
 
 
 def insert_item(item: Item) -> int:
@@ -43,15 +44,15 @@ def check_item_by_id(id: int) -> bool:
 
 def get_items(
         offset: int = 0,
-        limit: int = 10,
+        limit: int = 5000,
         min_price: float | None = None,
         max_price: float | None = None,
         show_deleted: bool = False,
 ) -> list[Item]:
     db_items = sorted(items.items(), key=lambda entry: entry[0])
-    if min_price:
+    if min_price is not None:
         db_items = filter(lambda entry: entry[1].price >= min_price, db_items)
-    if max_price:
+    if max_price is not None:
         db_items = filter(lambda entry: entry[1].price <= max_price, db_items)
     if not show_deleted:
         db_items = filter(lambda entry: not entry[1].deleted, db_items)
@@ -116,6 +117,60 @@ def get_cart_by_id(id: int) -> Cart:
     }
 
     return cart
+
+
+def get_cart_views(
+        offset: int = 0,
+        limit: int = 5000,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        min_quantity: int | None = None,
+        max_quantity: int | None = None,
+) -> list[CartView]:
+    db_cart_views = []
+    for cart_id, db_cart in sorted(carts.items(), key=lambda entry: entry[0]):
+        db_cart_view_items = [
+            {'id': item_id, 'item': items[item_id], 'quan': quan}
+            for item_id, quan in db_cart.items.items()
+        ]
+
+        price = 0
+        quan = 0
+        for item_view in db_cart_view_items:
+            item_price = item_view['item'].price
+            item_quan = 0 if item_view['item'].deleted else item_view['quan']
+
+            price += item_price * item_quan
+            quan += item_quan
+
+        db_cart_views.append({
+            'id': cart_id,
+            'items': db_cart_view_items,
+            'price': price,
+            'quan': quan,
+        })
+
+    if min_price is not None:
+        db_cart_views = filter(lambda cart: cart['price'] >= min_price, db_cart_views)
+    if max_price is not None:
+        db_cart_views = filter(lambda cart: cart['price'] <= max_price, db_cart_views)
+    if min_quantity is not None:
+        db_cart_views = filter(lambda cart: cart['quan'] >= min_quantity, db_cart_views)
+    if max_quantity is not None:
+        db_cart_views = filter(lambda cart: cart['quan'] <= max_quantity, db_cart_views)
+    db_cart_views = list(db_cart_views)[offset: offset + limit]
+
+    return [CartView(
+        cart['id'],
+        {Item(
+            item['id'],
+            item['item'].name,
+            item['item'].price,
+            item['item'].deleted
+        ): item['quan'] for item in cart['items']},
+        cart['price'],
+        cart['quan'],
+    ) for cart in db_cart_views]
 
 
 def add_item_to_cart(item_id: int, cart_id: int):
