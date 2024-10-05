@@ -55,8 +55,8 @@ async def get_item_by_id(id: int) -> ItemResponse:
 async def get_items(
         offset: Annotated[int, Query(ge=0)] = 0,
         limit: Annotated[int, Query(gt=0)] = 10,
-        min_price: Annotated[float, Query(ge=0)] | None = None,
-        max_price: Annotated[float, Query(ge=0)] | None = None,
+        min_price: Annotated[float | None, Query(ge=0)] = None,
+        max_price: Annotated[float | None, Query(ge=0)] = None,
         show_deleted: bool = False,
 ) -> list[GetItemsResponseItem]:
     items = repository.get_items(
@@ -177,10 +177,10 @@ async def get_cart_by_id(id: int) -> GetCartResponse:
 async def get_carts(
         offset: Annotated[int, Query(ge=0)] = 0,
         limit: Annotated[int, Query(gt=0)] = 10,
-        min_price: Annotated[float, Query(ge=0)] | None = None,
-        max_price: Annotated[float, Query(ge=0)] | None = None,
-        min_quantity: Annotated[int, Query(ge=0)] | None = None,
-        max_quantity: Annotated[int, Query(ge=0)] | None = None,
+        min_price: Annotated[float | None, Query(ge=0)] = None,
+        max_price: Annotated[float | None, Query(ge=0)] = None,
+        min_quantity: Annotated[int | None, Query(ge=0)] = None,
+        max_quantity: Annotated[int | None, Query(ge=0)] = None,
 ) -> list[GetCartsResponseCart]:
     carts = repository.get_cart_views(
         offset,
