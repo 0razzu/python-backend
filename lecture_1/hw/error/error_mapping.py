@@ -1,5 +1,5 @@
-from hw_1.error.http_errors import HTTP_422_UNPROCESSABLE_ENTITY, HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
-from hw_1.error.server_errors import ServerErrorCode, FIELD_ERROR_CODES, VAL_ERROR_CODES
+from lecture_1.hw.error.http_errors import HTTP_422_UNPROCESSABLE_ENTITY, HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
+from lecture_1.hw.error.server_errors import ServerErrorCode, FIELD_ERROR_CODES, VAL_ERROR_CODES
 
 
 def error_code_2_http_error(code: ServerErrorCode):

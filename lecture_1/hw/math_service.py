@@ -1,7 +1,7 @@
 import math
 from typing import AnyStr, Any
 
-from hw_1.error.server_errors import ServerException, ServerErrorCode
+from lecture_1.hw.error.server_errors import ServerException, ServerErrorCode
 
 
 def handle_factorial(query_params: dict[AnyStr, list[AnyStr]]) -> dict[str, int]:

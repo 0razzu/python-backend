@@ -1,11 +1,11 @@
 from typing import Any, Awaitable, Callable
 from urllib.parse import parse_qs
 
-from hw_1.error.error_mapping import error_code_2_http_error
-from hw_1.error.http_errors import HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_405_METHOD_NOT_ALLOWED
-from hw_1.error.server_errors import ServerException
-from hw_1.math_service import handle_factorial, handle_fibonacci, handle_mean
-from hw_1.network import send_json, send_error, load_json
+from lecture_1.hw.error.error_mapping import error_code_2_http_error
+from lecture_1.hw.error.http_errors import HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_405_METHOD_NOT_ALLOWED
+from lecture_1.hw.error.server_errors import ServerException
+from lecture_1.hw.math_service import handle_factorial, handle_fibonacci, handle_mean
+from lecture_1.hw.network import send_json, send_error, load_json
 
 
 async def app(
@@ -13,6 +13,15 @@ async def app(
         receive: Callable[[], Awaitable[dict[str, Any]]],
         send: Callable[[dict[str, Any]], Awaitable[None]],
 ) -> None:
+    if scope['type'] == 'lifespan':
+        while True:
+            message = await receive()
+            if message['type'] == 'lifespan.startup':
+                await send({'type': 'lifespan.startup.complete'})
+            elif message['type'] == 'lifespan.shutdown':
+                await send({'type': 'lifespan.shutdown.complete'})
+                return
+
     if scope['type'] not in ['http', 'https']:
         return
 

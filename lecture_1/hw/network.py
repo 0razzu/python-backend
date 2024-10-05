@@ -1,8 +1,8 @@
 import json
 from typing import Callable, Any, Awaitable
 
-from hw_1.error.http_errors import HTTPError
-from hw_1.error.server_errors import ServerException, ServerErrorCode
+from lecture_1.hw.error.http_errors import HTTPError
+from lecture_1.hw.error.server_errors import ServerException, ServerErrorCode
 
 
 async def send_json(
