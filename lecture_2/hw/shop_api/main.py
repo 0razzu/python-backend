@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
+from prometheus_fastapi_instrumentator import Instrumentator
 from starlette import status
 from starlette.responses import Response
 
@@ -13,6 +14,7 @@ from lecture_2.hw.shop_api.store import repository
 from lecture_2.hw.shop_api.store.errors import RepositoryException
 
 app = FastAPI(title="Shop API")
+Instrumentator().instrument(app).expose(app)
 
 
 @app.post(
